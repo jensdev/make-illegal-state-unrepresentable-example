@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { User, UnionFetchState } from "../types/user";
+import { parseUser } from "../parsers/user";
 
 const API_URL = "https://jsonplaceholder.typicode.com/users";
 
@@ -14,13 +15,13 @@ const API_URL = "https://jsonplaceholder.typicode.com/users";
  * 3. TypeScript FORCES exhaustive handling with switch statements
  * 4. No way to "forget" to update a flag - you set the entire state at once
  * 5. Self-documenting: the type tells you exactly what states are possible
+ * 6. TYPED ERRORS: FetchError is a discriminated union — forgetting a variant is a compile error
+ * 7. PARSE, DON'T VALIDATE: raw JSON is parsed at the boundary; domain types carry the proof
  */
 export function useFetchUserUnion() {
   const [state, setState] = useState<UnionFetchState<User>>({ status: "idle" });
 
   const fetchUser = useCallback(async (userId: number) => {
-    // Set to loading - this is the ONLY valid loading state
-    // No other properties to worry about!
     setState({ status: "loading" });
 
     try {
@@ -29,26 +30,42 @@ export function useFetchUserUnion() {
 
       // Randomly fail 30% of the time to demonstrate error state
       if (Math.random() < 0.3) {
-        throw new Error("Random network failure (simulated for demo)");
+        setState({
+          status: "error",
+          error: { _tag: "NetworkError", message: "Random network failure (simulated for demo)" },
+        });
+        return;
       }
 
       const response = await fetch(`${API_URL}/${userId}`);
 
       if (!response.ok) {
-        throw new Error(`User not found (status: ${response.status})`);
+        setState({
+          status: "error",
+          error: { _tag: "NotFound", userId },
+        });
+        return;
       }
 
-      const user: User = await response.json();
+      // Parse at the boundary: raw JSON → typed User (or a typed ParseError)
+      // parseUser() is the ONLY place that uses type assertions
+      const raw: unknown = await response.json();
+      const result = parseUser(raw);
 
-      // Success state - TypeScript KNOWS data exists here
-      // You cannot set status: 'success' without providing data
-      setState({ status: "success", data: user });
+      if (!result.ok) {
+        setState({ status: "error", error: result.error });
+        return;
+      }
+
+      setState({ status: "success", data: result.value });
     } catch (err) {
-      // Error state - TypeScript KNOWS error exists here
-      // You cannot set status: 'error' without providing error
+      // Only truly unexpected throws reach here (e.g. network down)
       setState({
         status: "error",
-        error: err instanceof Error ? err : new Error("Unknown error"),
+        error: {
+          _tag: "NetworkError",
+          message: err instanceof Error ? err.message : "Unknown error",
+        },
       });
     }
   }, []);

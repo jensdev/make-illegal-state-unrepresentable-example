@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { match } from "ts-pattern";
 import { useFetchUserUnion } from "../hooks/useFetchUnion";
-import { User } from "../types/user";
+import { FetchError, User } from "../types/user";
 import "./UserCard.css";
 
 /**
@@ -62,13 +62,20 @@ function ErrorDisplay({
   error,
   onRetry,
 }: {
-  error: Error;
+  error: FetchError;
   onRetry: () => void;
 }) {
+  // match().exhaustive() — adding a new FetchError variant without handling it here is a compile error
+  const message = match(error)
+    .with({ _tag: "NetworkError" }, ({ message }) => `Network error: ${message}`)
+    .with({ _tag: "NotFound" }, ({ userId }) => `User ${userId} not found`)
+    .with({ _tag: "ParseError" }, ({ message }) => `Invalid response: ${message}`)
+    .exhaustive();
+
   return (
     <div className="error-container">
       <div className="error-icon">!</div>
-      <p className="error-message">{error.message}</p>
+      <p className="error-message">{message}</p>
       <button className="btn btn-primary" onClick={onRetry}>
         Try Again
       </button>

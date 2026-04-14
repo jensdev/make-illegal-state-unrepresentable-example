@@ -1,9 +1,19 @@
+declare const EmailBrand: unique symbol;
+export type Email = string & { readonly [EmailBrand]: true };
+
+export type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
+
+export type FetchError =
+  | { _tag: "NetworkError"; message: string }
+  | { _tag: "NotFound"; userId: number }
+  | { _tag: "ParseError"; message: string };
+
 // User type from JSONPlaceholder API
 export interface User {
   id: number;
   name: string;
   username: string;
-  email: string;
+  email: Email; // branded — proof it passed parseEmail()
   address: {
     street: string;
     suite: string;
@@ -52,5 +62,5 @@ export interface BooleanFetchState<T> {
 export type UnionFetchState<T> =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "error"; error: Error }
+  | { status: "error"; error: FetchError } // typed — not a generic Error
   | { status: "success"; data: T };

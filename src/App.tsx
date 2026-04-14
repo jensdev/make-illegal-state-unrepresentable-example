@@ -94,6 +94,24 @@ type State<T> =
               <code>status === 'success'</code>.
             </p>
           </div>
+          <div className="benefit-card">
+            <h3>Typed Errors</h3>
+            <p>
+              Replace generic <code>Error</code> objects with a{" "}
+              <code>FetchError</code> discriminated union.{" "}
+              <code>.exhaustive()</code> ensures every variant is handled —
+              adding a new error type without handling it is a compile error.
+            </p>
+          </div>
+          <div className="benefit-card">
+            <h3>Parse, Don&apos;t Validate</h3>
+            <p>
+              Raw API responses are parsed into domain types at the boundary.{" "}
+              <code>User.email</code> is a branded <code>Email</code> type —
+              proof it passed validation. No need to re-check elsewhere in the
+              codebase.
+            </p>
+          </div>
         </div>
       </section>
 
